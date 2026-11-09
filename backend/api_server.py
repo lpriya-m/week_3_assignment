@@ -250,7 +250,7 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
         }
         
         payload = {
-            "model": f"openai/{rag_generator.config.llm_model}",
+            "model": rag_generator.config.llm_model,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}
@@ -266,6 +266,7 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
             json=payload,
             stream=True
         )
+        response.raise_for_status()
         
         answer_chunks = []
         for line in response.iter_lines():
@@ -285,12 +286,14 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
                         continue
         
         answer = "".join(answer_chunks)
+        if not answer:
+            raise RuntimeError("The language model returned an empty response.")
         
         # Stage 4: Complete
         processing_time = time.time() - start_time
         yield emit("complete", {
             "answer": answer,
-            "sources": list(sources_metadata.values()),
+            "sources": sources_metadata,
             "refined_query": refined if refined != query else None,
             "processing_time": processing_time
         })
@@ -444,7 +447,7 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
         }
         
         payload = {
-            "model": f"openai/{rag_generator.config.llm_model}",
+            "model": rag_generator.config.llm_model,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}
@@ -460,6 +463,7 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
             json=payload,
             stream=True
         )
+        response.raise_for_status()
         
         answer_chunks = []
         for line in response.iter_lines():
@@ -482,13 +486,15 @@ IMPORTANT: You have been provided with {len(results)} paper excerpts. Make sure 
                         continue
         
         answer = "".join(answer_chunks)
+        if not answer:
+            raise RuntimeError("The language model returned an empty response.")
         
         # Stage 7: Complete
         processing_time = time.time() - start_time
         await websocket.send_json({
             "type": "complete",
             "answer": answer,
-            "sources": list(sources_metadata.values()),
+            "sources": sources_metadata,
             "refined_query": refined if refined != query else None,
             "processing_time": processing_time
         })
